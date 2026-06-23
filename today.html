@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>今日记录 - Q's日常</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            overflow-x: hidden;
+        }
+        
+        .header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            gap: 15px;
+        }
+        
+        .back-btn {
+            padding: 10px 20px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        .back-btn:hover {
+            background: #1976D2;
+        }
+        
+        h1 {
+            color: #333;
+            flex: 1;
+            font-size: 20px;
+        }
+        
+        .stats-summary {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 0;
+            margin-top: 20px;
+        }
+        
+        .stats-summary h2 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+        
+        .stat-item {
+            background: #f9f9f9;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #2196F3;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 12px;
+            margin-top: 3px;
+        }
+        
+        /* 24小时时间轴 */
+        .timeline-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        
+        .timeline-container h2 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        
+        .timeline-wrapper {
+            display: flex;
+            position: relative;
+            height: 600px;
+            align-items: stretch;
+        }
+        
+        .time-labels-left,
+        .time-labels-right {
+            position: relative;
+            width: 44px;
+            flex-shrink: 0;
+            margin-top: 36px;
+            height: 564px;
+        }
+        
+        .time-labels-left .time-label {
+            position: absolute;
+            right: 4px;
+            font-size: 10px;
+            color: #666;
+            transform: translateY(-50%);
+            background: white;
+            padding: 0 4px;
+            border-radius: 2px;
+            white-space: nowrap;
+        }
+        
+        .time-labels-right .time-label {
+            position: absolute;
+            left: 4px;
+            font-size: 10px;
+            color: #666;
+            transform: translateY(-50%);
+            background: white;
+            padding: 0 4px;
+            border-radius: 2px;
+            white-space: nowrap;
+        }
+        
+        .timeline-content {
+            flex: 1;
+            display: flex;
+            gap: 15px;
+            position: relative;
+            height: 600px;
+            min-width: 0;
+        }
+        
+        .timeline-column {
+            flex: 1;
+            position: relative;
+            background: #f9f9f9;
+            border-radius: 8px;
+            overflow: hidden;
+            height: 600px;
+        }
+        
+        .timeline-column-title {
+            text-align: center;
+            padding: 8px;
+            background: #e3f2fd;
+            color: #1976D2;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
+        .timeline-column-content {
+            position: relative;
+            height: calc(100% - 36px);
+        }
+        
+        .timeline-line {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: #e0e0e0;
+        }
+        
+        /* 动态小人 */
+        .current-time-marker {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 0;
+            background: transparent;
+            z-index: 100;
+            transition: top 0.5s ease, left 0.5s ease, right 0.5s ease;
+            pointer-events: none;
+        }
+        
+        /* 上午：小人在左栏中间 */
+        .current-time-marker.morning {
+            left: 44px;
+            right: 50%;
+        }
+        .current-time-marker.morning::before {
+            left: 40%;
+            right: auto;
+            transform: none;
+        }
+        .current-time-marker.morning::after {
+            left: 50%;
+            right: auto;
+            transform: none;
+        }
+        
+        /* 下午：小人在右栏中间 */
+        .current-time-marker.afternoon {
+            left: 50%;
+            right: 44px;
+        }
+        .current-time-marker.afternoon::before {
+            right: 40%;
+            left: auto;
+            transform: none;
+        }
+        .current-time-marker.afternoon::after {
+            right: 50%;
+            left: auto;
+            transform: none;
+        }
+        
+        .current-time-marker::before {
+            content: '👧';
+            position: absolute;
+            top: -14px;
+            font-size: 22px;
+            animation: bounce 1s infinite;
+            transition: left 0.5s ease, right 0.5s ease;
+        }
+        
+        .current-time-marker::after {
+            content: attr(data-time);
+            position: absolute;
+            top: -10px;
+            background: transparent;
+            color: #f44336;
+            padding: 0;
+            border-radius: 0;
+            font-size: 11px;
+            font-weight: bold;
+            white-space: nowrap;
+            transition: left 0.5s ease, right 0.5s ease;
+        }
+        
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-4px); }
+        }
+        
+        /* 记录条目 */
+        .record-item {
+            position: absolute;
+            left: 5px;
+            background: #FFF9C4;
+            border: 2px solid #FFD54F;
+            border-radius: 8px;
+            padding: 2px 6px;
+            color: #333;
+            font-size: 12px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            touch-action: pan-y;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+        }
+        
+        .record-item:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            background: #FFF59D;
+        }
+        
+        .record-item.swiping {
+            transition: transform 0.3s ease;
+        }
+        
+        .record-item.swiped {
+            transform: translateX(-80px);
+        }
+        
+        .record-time {
+            font-size: 10px;
+            color: #666;
+            margin-bottom: 2px;
+        }
+        
+        .record-activity {
+            font-weight: bold;
+            font-size: 11px;
+            color: #333;
+            line-height: 1.2;
+        }
+        
+        .record-duration {
+            font-size: 11px;
+            color: #666;
+        }
+        
+        .empty-state {
+            text-align: center;
+            color: #999;
+            padding: 40px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+        }
+        
+        /* 删除按钮（左滑显示） */
+        .delete-btn {
+            position: absolute;
+            right: 5px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 8px 15px;
+            font-size: 12px;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 10;
+        }
+        
+        .record-item.swiped .delete-btn {
+            opacity: 1;
+        }
+        
+        /* 删除确认弹窗 */
+        .delete-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .delete-modal.show {
+            display: flex;
+        }
+        
+        .delete-modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            max-width: 300px;
+            width: 90%;
+        }
+        
+        .delete-modal-content h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .delete-modal-content p {
+            margin-bottom: 20px;
+            color: #666;
+        }
+        
+        .delete-modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        
+        .delete-modal-buttons button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        .btn-confirm {
+            background: #f44336;
+            color: white;
+        }
+        
+        .btn-cancel {
+            background: #e0e0e0;
+            color: #333;
+        }
+        
+        /* 右键菜单 */
+        .context-menu {
+            display: none;
+            position: fixed;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            z-index: 1000;
+            padding: 8px 0;
+            min-width: 150px;
+        }
+        
+        .context-menu.show {
+            display: block;
+        }
+        
+        .context-menu-item {
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #333;
+            transition: background 0.2s;
+        }
+        
+        .context-menu-item:hover {
+            background: #f5f5f5;
+        }
+        
+        .context-menu-item.delete {
+            color: #f44336;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <button class="back-btn" onclick="goBack()">← 返回</button>
+        <h1 id="dateTitle">📆 今日记录</h1>
+    </div>
+    
+    <div class="timeline-container">
+        <h2>Today</h2>
+        <div class="timeline-wrapper" id="timelineWrapper">
+            <div class="time-labels-left" id="timeLabelsLeft"></div>
+            <div class="timeline-content">
+                <div class="timeline-column">
+                    <div class="timeline-column-title">🌅 上午</div>
+                    <div class="timeline-column-content" id="column1"></div>
+                </div>
+                <div class="timeline-column">
+                    <div class="timeline-column-title">🌙 下午</div>
+                    <div class="timeline-column-content" id="column2"></div>
+                </div>
+            </div>
+            <div class="time-labels-right" id="timeLabelsRight"></div>
+            <div class="current-time-marker" id="currentMarker" data-time="现在"></div>
+        </div>
+    </div>
+    
+    <div class="stats-summary">
+        <h2>🌸 今日统计</h2>
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div class="stat-value" id="totalRecords">0</div>
+                <div class="stat-label">记录数</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="totalActivities">0</div>
+                <div class="stat-label">活动种类</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="totalDuration">0</div>
+                <div class="stat-label">总时长(分钟)</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 删除确认弹窗 -->
+    <div class="delete-modal" id="deleteModal">
+        <div class="delete-modal-content">
+            <h3>🗑️ 确认删除</h3>
+            <p>确定要删除这条记录吗？</p>
+            <div class="delete-modal-buttons">
+                <button class="btn-confirm" onclick="confirmDelete()">删除</button>
+                <button class="btn-cancel" onclick="cancelDelete()">取消</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 右键菜单 -->
+    <div class="context-menu" id="contextMenu">
+        <div class="context-menu-item" onclick="showDeleteModal()">🗑️ 删除记录</div>
+        <div class="context-menu-item" onclick="hideContextMenu()">取消</div>
+    </div>
+    
+    <script>
+        let records = [];
+        let recordToDelete = null;
+        let touchStartX = 0;
+        let touchCurrentX = 0;
+        let swipedElement = null;
+        
+        // 从 LocalStorage 加载数据
+        function loadRecords() {
+            const saved = localStorage.getItem('dailyRecords');
+            if (saved) {
+                records = JSON.parse(saved);
+            }
+        }
+        
+        // 保存数据
+        function saveRecords() {
+            localStorage.setItem('dailyRecords', JSON.stringify(records));
+        }
+        
+        // 获取今天的记录
+        function getTodayRecords() {
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            
+            return records.filter(r => {
+                const recordDate = new Date(r.startTime);
+                return recordDate >= today;
+            });
+        }
+        
+        // 更新日期标题
+        function updateDateTitle() {
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('zh-CN', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                weekday: 'long'
+            });
+            document.getElementById('dateTitle').textContent = '📆 ' + dateStr;
+        }
+        
+        // 生成左侧时间标签（00:00 - 12:00）
+        function generateTimeLabelsLeft() {
+            const container = document.getElementById('timeLabelsLeft');
+            let html = '';
+            for (let hour = 0; hour <= 12; hour++) {
+                const top = (hour / 12) * 100;
+                html += `<div class="time-label" style="top: ${top}%">${hour.toString().padStart(2, '0')}:00</div>`;
+            }
+            container.innerHTML = html;
+        }
+
+        // 生成右侧时间标签（12:00 - 24:00）
+        function generateTimeLabelsRight() {
+            const container = document.getElementById('timeLabelsRight');
+            let html = '';
+            for (let hour = 12; hour <= 24; hour++) {
+                const top = ((hour - 12) / 12) * 100;
+                const label = hour === 24 ? '24:00' : `${hour.toString().padStart(2, '0')}:00`;
+                html += `<div class="time-label" style="top: ${top}%">${label}</div>`;
+            }
+            container.innerHTML = html;
+        }
+        
+        // 生成时间轴线
+        function generateTimelineLines() {
+            const columns = document.querySelectorAll('.timeline-column-content');
+            columns.forEach(column => {
+                let html = '';
+                for (let hour = 0; hour <= 12; hour++) {
+                    const top = (hour / 12) * 100;
+                    html += `<div class="timeline-line" style="top: ${top}%"></div>`;
+                }
+                column.insertAdjacentHTML('afterbegin', html);
+            });
+        }
+        
+        // 更新当前时间标记位置
+        function updateCurrentTimeMarker() {
+            const now = new Date();
+            const hours = now.getHours();
+            const minutes = now.getMinutes();
+            
+            let percentage;
+            if (hours < 12) {
+                // 上午：基于左栏 0-12h
+                const totalMinutes = hours * 60 + minutes;
+                percentage = 6 + (totalMinutes / 720) * 94;
+            } else {
+                // 下午：基于右栏 12-24h
+                const totalMinutes = (hours - 12) * 60 + minutes;
+                percentage = 6 + (totalMinutes / 720) * 94;
+            }
+            
+            const marker = document.getElementById('currentMarker');
+            marker.style.top = percentage + '%';
+            marker.setAttribute('data-time', `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`);
+            // 上午 0-12 小人在左，下午 12-24 小人在右
+            marker.classList.toggle('morning', hours < 12);
+            marker.classList.toggle('afternoon', hours >= 12);
+        }
+        
+        // 显示记录
+        function displayRecords() {
+            const todayRecords = getTodayRecords();
+            
+            // 更新统计
+            document.getElementById('totalRecords').textContent = todayRecords.length;
+            const activities = new Set(todayRecords.map(r => r.activity));
+            document.getElementById('totalActivities').textContent = activities.size;
+            const totalDuration = todayRecords.reduce((sum, r) => sum + r.duration, 0);
+            document.getElementById('totalDuration').textContent = Math.floor(totalDuration);
+            
+            // 清空列内容（保留时间线）
+            document.querySelectorAll('.timeline-column-content').forEach(col => {
+                const lines = col.querySelectorAll('.timeline-line');
+                col.innerHTML = '';
+                lines.forEach(line => col.appendChild(line));
+            });
+            
+            if (todayRecords.length === 0) {
+                document.getElementById('column1').innerHTML += '<div class="empty-state">今天还没有记录</div>';
+                return;
+            }
+            
+            // 分配记录到两列
+            todayRecords.forEach((record) => {
+                const startTime = new Date(record.startTime);
+                const endTime = new Date(record.endTime);
+                const hour = startTime.getHours();
+                
+                // 0-12点在左栏，13-24点在右栏
+                const column = hour <= 12 ? 'column1' : 'column2';
+                const columnHour = hour <= 12 ? hour : hour - 12;
+                
+                const startMinutes = columnHour * 60 + startTime.getMinutes();
+                const endMinutes = (hour <= 12 ? endTime.getHours() : endTime.getHours() - 12) * 60 + endTime.getMinutes();
+                const duration = endMinutes - startMinutes;
+                
+                const top = (startMinutes / 720) * 100; // 720 = 12小时 * 60分钟
+                const height = Math.max((duration / 720) * 100, 3); // 最小高度3%
+                
+                const recordId = record.startTime;
+                // 计算宽度：1小时 = 100%栏宽，超过1小时封顶，按比例缩放
+                const durationHours = record.duration / 60;
+                const widthPercent = Math.min(durationHours * 100, 100); // 最大100%
+                
+                const recordHtml = `
+                    <div class="record-item" 
+                         style="top: ${top}%; height: ${height}%; width: ${widthPercent}%;"
+                         data-record-id="${recordId}"
+                         oncontextmenu="showContextMenu(event, '${recordId}')">
+                        <div class="record-activity">${record.activity} ${formatTime(record.startTime)}-${formatTime(record.endTime)}</div>
+                    </div>
+                `;
+                
+                document.getElementById(column).insertAdjacentHTML('beforeend', recordHtml);
+            });
+            
+            // 添加触摸事件（左滑删除）
+            addSwipeEvents();
+        }
+        
+        // 添加滑动事件
+        function addSwipeEvents() {
+            const recordItems = document.querySelectorAll('.record-item');
+            
+            recordItems.forEach(item => {
+                // 触摸开始
+                item.addEventListener('touchstart', function(e) {
+                    touchStartX = e.touches[0].clientX;
+                    this.classList.add('swiping');
+                }, { passive: true });
+                
+                // 触摸移动
+                item.addEventListener('touchmove', function(e) {
+                    touchCurrentX = e.touches[0].clientX;
+                    const diff = touchStartX - touchCurrentX;
+                    
+                    // 只允许左滑
+                    if (diff > 0 && diff < 100) {
+                        this.style.transform = `translateX(-${diff}px)`;
+                    }
+                }, { passive: true });
+                
+                // 触摸结束
+                item.addEventListener('touchend', function(e) {
+                    const diff = touchStartX - touchCurrentX;
+                    
+                    if (diff > 50) {
+                        // 左滑超过50px，显示删除
+                        this.classList.add('swiped');
+                        this.style.transform = '';
+                        swipedElement = this;
+                        
+                        // 点击删除按钮
+                        setTimeout(() => {
+                            if (swipedElement === this) {
+                                recordToDelete = this.getAttribute('data-record-id');
+                                showDeleteModal();
+                            }
+                        }, 100);
+                    } else {
+                        // 恢复原位
+                        this.style.transform = '';
+                        this.classList.remove('swiped');
+                    }
+                    
+                    this.classList.remove('swiping');
+                });
+                
+                // 点击恢复
+                item.addEventListener('click', function() {
+                    if (this.classList.contains('swiped')) {
+                        this.classList.remove('swiped');
+                        swipedElement = null;
+                    }
+                });
+            });
+        }
+        
+        // 显示右键菜单
+        function showContextMenu(event, recordId) {
+            event.preventDefault();
+            recordToDelete = recordId;
+            
+            const menu = document.getElementById('contextMenu');
+            menu.style.left = event.clientX + 'px';
+            menu.style.top = event.clientY + 'px';
+            menu.classList.add('show');
+        }
+        
+        // 隐藏右键菜单
+        function hideContextMenu() {
+            document.getElementById('contextMenu').classList.remove('show');
+        }
+        
+        // 显示删除弹窗
+        function showDeleteModal() {
+            hideContextMenu();
+            document.getElementById('deleteModal').classList.add('show');
+        }
+        
+        // 确认删除
+        function confirmDelete() {
+            if (recordToDelete) {
+                records = records.filter(r => r.startTime !== recordToDelete);
+                saveRecords();
+                displayRecords();
+                recordToDelete = null;
+                swipedElement = null;
+            }
+            document.getElementById('deleteModal').classList.remove('show');
+        }
+        
+        // 取消删除
+        function cancelDelete() {
+            recordToDelete = null;
+            if (swipedElement) {
+                swipedElement.classList.remove('swiped');
+                swipedElement = null;
+            }
+            document.getElementById('deleteModal').classList.remove('show');
+        }
+        
+        // 点击空白处关闭菜单
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.context-menu') && !e.target.closest('.record-item')) {
+                hideContextMenu();
+            }
+        });
+        
+        // 格式化时间
+        function formatTime(date) {
+            return new Date(date).toLocaleTimeString('zh-CN', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+        
+        // 格式化时长
+        function formatDuration(minutes) {
+            if (minutes < 60) {
+                return `${Math.floor(minutes)} 分钟`;
+            }
+            const hours = Math.floor(minutes / 60);
+            const mins = Math.floor(minutes % 60);
+            return `${hours}小时${mins}分钟`;
+        }
+        
+        // 返回首页
+        function goBack() {
+            window.location.href = 'time-tracker-vscode.html';
+        }
+        
+        // 页面加载时初始化
+        window.onload = function() {
+            loadRecords();
+            updateDateTitle();
+            generateTimeLabelsLeft();
+            generateTimeLabelsRight();
+            generateTimelineLines();
+            displayRecords();
+            updateCurrentTimeMarker();
+            
+            // 每分钟更新当前时间标记
+            setInterval(updateCurrentTimeMarker, 60000);
+        };
+    </script>
+</body>
+</html>

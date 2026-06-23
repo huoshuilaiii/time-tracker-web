@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📝 Q's日常</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .status-bar {
+            background: #e3f2fd;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            text-align: center;
+            color: #1976D2;
+        }
+        
+        .quick-buttons {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .quick-buttons h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        
+        .button-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .button-row:last-child {
+            margin-bottom: 0;
+        }
+        
+        .quick-btn {
+            flex: 1;
+            padding: 15px 10px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #FFF9C4;
+            color: #333;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            line-height: 1.2;
+            min-height: 60px;
+        }
+        
+        .quick-btn .emoji {
+            font-size: 24px;
+        }
+        
+        .quick-btn .text {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .quick-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        .quick-btn.active {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .record-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .activity-input {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        input[type="text"] {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #2196F3;
+            color: white;
+        }
+        
+        .btn:hover {
+            background: #1976D2;
+        }
+        
+        .review-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .review-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        
+        .review-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+        
+        .review-card {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .review-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .review-icon {
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+        
+        .review-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .review-desc {
+            font-size: 14px;
+            color: #999;
+        }
+        
+        .empty-state {
+            text-align: center;
+            color: #999;
+            padding: 40px;
+        }
+    </style>
+</head>
+<body>
+    <h1>📝 Q's日常</h1>
+    
+    <div class="status-bar">
+        💡 提示：点击按钮变绿 = 记录中｜可同时记录多个活动
+    </div>
+    
+    <div class="quick-buttons">
+        <h2>🔘 Click Button</h2>
+        <div class="button-row">
+            <button class="quick-btn" onclick="toggleActivity('起床')"><span class="emoji">🌅</span><span class="text">起床</span></button>
+            <button class="quick-btn" onclick="toggleActivity('洗漱')"><span class="emoji">🧼</span><span class="text">洗漱</span></button>
+            <button class="quick-btn" onclick="toggleActivity('遛狗')"><span class="emoji">🐕</span><span class="text">遛狗</span></button>
+        </div>
+        <div class="button-row">
+            <button class="quick-btn" onclick="toggleActivity('做饭')"><span class="emoji">🍳</span><span class="text">做饭</span></button>
+            <button class="quick-btn" onclick="toggleActivity('洗衣')"><span class="emoji">👕</span><span class="text">洗衣</span></button>
+            <button class="quick-btn" onclick="toggleActivity('扫拖')"><span class="emoji">🧹</span><span class="text">扫拖</span></button>
+        </div>
+        <div class="button-row">
+            <button class="quick-btn" onclick="toggleActivity('英语chat')"><span class="emoji">📚</span><span class="text">英语<br>chat</span></button>
+            <button class="quick-btn" onclick="toggleActivity('动感单车')"><span class="emoji">🚴</span><span class="text">动感<br>单车</span></button>
+            <button class="quick-btn" onclick="toggleActivity('输出记录')"><span class="emoji">✍️</span><span class="text">输出<br>记录</span></button>
+        </div>
+        <div class="button-row">
+            <button class="quick-btn" onclick="toggleActivity('睡觉')"><span class="emoji">🛏️</span><span class="text">睡觉</span></button>
+            <button class="quick-btn" onclick="toggleActivity('整理')"><span class="emoji">📦</span><span class="text">整理</span></button>
+            <button class="quick-btn" onclick="toggleActivity('床单')"><span class="emoji">🛌</span><span class="text">床单</span></button>
+        </div>
+    </div>
+    
+    <div class="record-section">
+        <div class="activity-input">
+            <input type="text" id="activityInput" placeholder="其他..." />
+        </div>
+        
+        <div style="text-align: center;">
+            <button class="btn" onclick="startCustomRecord()">开始</button>
+            <button class="btn" onclick="endCustomRecord()" style="background: #f44336; margin-left: 10px;">结束</button>
+        </div>
+    </div>
+    
+    <div class="review-section">
+        <h2>🕐 Review</h2>
+        <div class="review-grid">
+            <div class="review-card" onclick="window.location.href='today.html'">
+                <div class="review-icon">📆</div>
+                <div class="review-title" style="font-size: 14px;">今日记录</div>
+                <div class="review-desc">今天的活动记录</div>
+            </div>
+            <div class="review-card" onclick="window.location.href='week.html'">
+                <div class="review-icon">📊</div>
+                <div class="review-title" style="font-size: 14px;">本周回顾</div>
+                <div class="review-desc">本周的活动统计</div>
+            </div>
+            <div class="review-card" onclick="window.location.href='month.html'">
+                <div class="review-icon">📈</div>
+                <div class="review-title" style="font-size: 14px;">月度记录</div>
+                <div class="review-desc">本月的活动趋势</div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let activeRecords = {};
+        let records = [];
+        let updateInterval = null;
+        let customActivity = null;
+        
+        const activityCategories = {
+            '英语chat': '学习',
+            '输出记录': '学习',
+            '动感单车': '运动',
+            '睡觉': '日常',
+            '做饭': '日常',
+            '遛狗': '日常',
+            '起床': '日常',
+            '洗漱': '日常',
+            '洗衣': '日常',
+            '整理': '日常',
+            '床单': '日常',
+            '扫拖': '日常'
+        };
+        
+        function loadRecords() {
+            const saved = localStorage.getItem('dailyRecords');
+            if (saved) {
+                records = JSON.parse(saved);
+            }
+            
+            const savedActive = localStorage.getItem('activeRecords');
+            if (savedActive) {
+                activeRecords = JSON.parse(savedActive);
+                updateButtons();
+            }
+        }
+        
+        function saveRecords() {
+            localStorage.setItem('dailyRecords', JSON.stringify(records));
+        }
+        
+        function saveActiveRecords() {
+            localStorage.setItem('activeRecords', JSON.stringify(activeRecords));
+        }
+        
+        function toggleActivity(activityName) {
+            if (activeRecords[activityName]) {
+                endActivity(activityName);
+                event.target.classList.remove('active');
+            } else {
+                startActivity(activityName);
+                event.target.classList.add('active');
+            }
+        }
+        
+        function startActivity(activityName) {
+            activeRecords[activityName] = {
+                startTime: new Date().toISOString(),
+                category: activityCategories[activityName] || '其他'
+            };
+            
+            saveActiveRecords();
+        }
+        
+        function endActivity(activityName) {
+            const record = activeRecords[activityName];
+            if (!record) return;
+            
+            const startTime = new Date(record.startTime);
+            const endTime = new Date();
+            const duration = (endTime - startTime) / 1000 / 60;
+            
+            records.unshift({
+                activity: activityName,
+                category: record.category,
+                startTime: startTime,
+                endTime: endTime,
+                duration: duration
+            });
+            
+            delete activeRecords[activityName];
+            
+            saveRecords();
+            saveActiveRecords();
+        }
+        
+        function startCustomRecord() {
+            const activity = document.getElementById('activityInput').value.trim();
+            if (!activity) {
+                alert('请输入活动内容！');
+                return;
+            }
+            
+            if (activeRecords[activity]) {
+                alert('这个活动已经在记录中！');
+                return;
+            }
+            
+            customActivity = activity;
+            startActivity(activity);
+            document.getElementById('activityInput').value = '';
+        }
+        
+        function endCustomRecord() {
+            if (!customActivity && Object.keys(activeRecords).length > 0) {
+                const lastActivity = Object.keys(activeRecords).pop();
+                endActivity(lastActivity);
+                updateButtons();
+            } else if (customActivity) {
+                endActivity(customActivity);
+                customActivity = null;
+                updateButtons();
+            }
+        }
+        
+        function updateButtons() {
+            const buttons = document.querySelectorAll('.quick-btn');
+            buttons.forEach(btn => {
+                const activityName = btn.textContent.replace(/^[\u{1F300}-\u{1F9FF}]\s*/u, '');
+                if (activeRecords[activityName]) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+        
+        window.onload = function() {
+            loadRecords();
+        };
+        
+        window.onbeforeunload = function() {
+            saveActiveRecords();
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>月度记录 - Q's日常</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+            gap: 15px;
+        }
+        
+        .back-btn {
+            padding: 10px 20px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        .back-btn:hover {
+            background: #1976D2;
+        }
+        
+        h1 {
+            color: #333;
+            flex: 1;
+        }
+        
+        .month-info {
+            background: #e3f2fd;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            text-align: center;
+            color: #1976D2;
+        }
+        
+        /* 日历热力图 */
+        .calendar-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .calendar-container h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+        }
+        
+        .calendar-header {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+        
+        .calendar-header-cell {
+            text-align: center;
+            font-size: 14px;
+            color: #666;
+            padding: 5px;
+        }
+        
+        .calendar-cell {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 5px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+        
+        .calendar-cell:hover {
+            transform: scale(1.1);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        
+        .calendar-cell.empty {
+            background: transparent;
+        }
+        
+        .calendar-cell .date-num {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            font-size: 10px;
+            color: #666;
+        }
+        
+        .calendar-cell .activity-count {
+            font-size: 12px;
+            font-weight: bold;
+            color: white;
+        }
+        
+        /* 图例 */
+        .legend {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+        }
+        
+        /* 统计卡片 */
+        .stats-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .stats-container h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+        
+        .stat-card {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        
+        .stat-card-title {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .stat-card-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2196F3;
+        }
+        
+        /* 活动排行 */
+        .ranking-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .ranking-container h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        
+        .ranking-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .ranking-number {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #2196F3;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 15px;
+        }
+        
+        .ranking-number.top3 {
+            background: #FF9800;
+        }
+        
+        .ranking-info {
+            flex: 1;
+        }
+        
+        .ranking-name {
+            font-size: 16px;
+            color: #333;
+        }
+        
+        .ranking-detail {
+            font-size: 12px;
+            color: #999;
+        }
+        
+        .ranking-duration {
+            font-size: 18px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <button class="back-btn" onclick="goBack()">← 返回</button>
+        <h1>📈 月度记录</h1>
+    </div>
+    
+    <div class="month-info" id="monthInfo">
+        统计周期：本月
+    </div>
+    
+    <div class="stats-container">
+        <h2>📊 本月概览</h2>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-card-title">总记录数</div>
+                <div class="stat-card-value" id="totalRecords">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-title">活跃天数</div>
+                <div class="stat-card-value" id="activeDays">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-title">总时长(小时)</div>
+                <div class="stat-card-value" id="totalHours">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-title">最常活动</div>
+                <div class="stat-card-value" id="topActivity">-</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="calendar-container">
+        <h2>📅 活动日历</h2>
+        <div class="calendar-header">
+            <div class="calendar-header-cell">日</div>
+            <div class="calendar-header-cell">一</div>
+            <div class="calendar-header-cell">二</div>
+            <div class="calendar-header-cell">三</div>
+            <div class="calendar-header-cell">四</div>
+            <div class="calendar-header-cell">五</div>
+            <div class="calendar-header-cell">六</div>
+        </div>
+        <div class="calendar-grid" id="calendarGrid"></div>
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color" style="background: #e0e0e0;"></div>
+                <span>无记录</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #81C784;"></div>
+                <span>1-2条</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #4CAF50;"></div>
+                <span>3-5条</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #2E7D32;"></div>
+                <span>5条以上</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="ranking-container">
+        <h2>🏆 活动时长排行</h2>
+        <div id="rankingList"></div>
+    </div>
+    
+    <script>
+        let records = [];
+        
+        // 从 LocalStorage 加载数据
+        function loadRecords() {
+            const saved = localStorage.getItem('dailyRecords');
+            if (saved) {
+                records = JSON.parse(saved);
+            }
+        }
+        
+        // 获取本月记录
+        function getMonthRecords() {
+            const now = new Date();
+            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+            
+            return records.filter(r => {
+                const recordDate = new Date(r.startTime);
+                return recordDate >= monthStart;
+            });
+        }
+        
+        // 按天统计记录数
+        function getDailyStats(monthRecords) {
+            const dailyStats = {};
+            monthRecords.forEach(r => {
+                const date = new Date(r.startTime).toDateString();
+                if (!dailyStats[date]) {
+                    dailyStats[date] = { count: 0, duration: 0 };
+                }
+                dailyStats[date].count++;
+                dailyStats[date].duration += r.duration;
+            });
+            return dailyStats;
+        }
+        
+        // 渲染日历
+        function renderCalendar(dailyStats) {
+            const grid = document.getElementById('calendarGrid');
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth();
+            
+            // 获取当月第一天和最后一天
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            
+            // 获取第一天是星期几（0=周日）
+            const firstDayOfWeek = firstDay.getDay();
+            
+            // 获取当月天数
+            const daysInMonth = lastDay.getDate();
+            
+            let html = '';
+            
+            // 填充前面的空白天数
+            for (let i = 0; i < firstDayOfWeek; i++) {
+                html += '<div class="calendar-cell empty"></div>';
+            }
+            
+            // 填充当月天数
+            for (let day = 1; day <= daysInMonth; day++) {
+                const date = new Date(year, month, day);
+                const dateStr = date.toDateString();
+                const stats = dailyStats[dateStr];
+                
+                let background = '#e0e0e0';
+                let count = 0;
+                
+                if (stats) {
+                    count = stats.count;
+                    if (count <= 2) {
+                        background = '#81C784';
+                    } else if (count <= 5) {
+                        background = '#4CAF50';
+                    } else {
+                        background = '#2E7D32';
+                    }
+                }
+                
+                html += `
+                    <div class="calendar-cell" style="background: ${background};" title="${day}日: ${count}条记录">
+                        <span class="date-num">${day}</span>
+                        ${stats ? `<span class="activity-count">${count}</span>` : ''}
+                    </div>
+                `;
+            }
+            
+            grid.innerHTML = html;
+        }
+        
+        // 渲染统计
+        function renderStats(monthRecords) {
+            const totalRecords = monthRecords.length;
+            const dailyStats = getDailyStats(monthRecords);
+            const activeDays = Object.keys(dailyStats).length;
+            const totalDuration = monthRecords.reduce((sum, r) => sum + r.duration, 0);
+            const totalHours = (totalDuration / 60).toFixed(1);
+            
+            // 找出最常活动
+            const activityCounts = {};
+            monthRecords.forEach(r => {
+                activityCounts[r.activity] = (activityCounts[r.activity] || 0) + 1;
+            });
+            
+            let topActivity = '-';
+            let maxCount = 0;
+            Object.entries(activityCounts).forEach(([activity, count]) => {
+                if (count > maxCount) {
+                    maxCount = count;
+                    topActivity = activity;
+                }
+            });
+            
+            document.getElementById('totalRecords').textContent = totalRecords;
+            document.getElementById('activeDays').textContent = activeDays;
+            document.getElementById('totalHours').textContent = totalHours;
+            document.getElementById('topActivity').textContent = topActivity;
+        }
+        
+        // 渲染排行
+        function renderRanking(monthRecords) {
+            const activityDurations = {};
+            monthRecords.forEach(r => {
+                activityDurations[r.activity] = (activityDurations[r.activity] || 0) + r.duration;
+            });
+            
+            const sorted = Object.entries(activityDurations)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5);
+            
+            const container = document.getElementById('rankingList');
+            
+            if (sorted.length === 0) {
+                container.innerHTML = '<div class="empty-state">本月还没有记录</div>';
+                return;
+            }
+            
+            const html = sorted.map(([activity, duration], index) => {
+                const hours = Math.floor(duration / 60);
+                const mins = Math.floor(duration % 60);
+                const timeStr = hours > 0 ? `${hours}小时${mins}分钟` : `${mins}分钟`;
+                
+                return `
+                    <div class="ranking-item">
+                        <div class="ranking-number ${index < 3 ? 'top3' : ''}">${index + 1}</div>
+                        <div class="ranking-info">
+                            <div class="ranking-name">${activity}</div>
+                            <div class="ranking-detail">${Math.floor(duration / 60 * 10) / 10} 小时</div>
+                        </div>
+                        <div class="ranking-duration">${timeStr}</div>
+                    </div>
+                `;
+            }).join('');
+            
+            container.innerHTML = html;
+        }
+        
+        // 更新月份信息
+        function updateMonthInfo() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth() + 1;
+            document.getElementById('monthInfo').textContent = 
+                `统计周期：${year}年${month}月`;
+        }
+        
+        // 返回首页
+        function goBack() {
+            window.location.href = 'time-tracker-vscode.html';
+        }
+        
+        // 页面加载时初始化
+        window.onload = function() {
+            loadRecords();
+            updateMonthInfo();
+            
+            const monthRecords = getMonthRecords();
+            const dailyStats = getDailyStats(monthRecords);
+            
+            renderCalendar(dailyStats);
+            renderStats(monthRecords);
+            renderRanking(monthRecords);
+        };
+    </script>
+</body>
+</html>

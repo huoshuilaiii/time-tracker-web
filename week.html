@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>本周回顾 - Q's日常</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+            gap: 15px;
+        }
+        
+        .back-btn {
+            padding: 10px 20px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        .back-btn:hover {
+            background: #1976D2;
+        }
+        
+        h1 {
+            color: #333;
+            flex: 1;
+        }
+        
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .chart-container h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        
+        /* 横向柱状图 - 累计次数 */
+        .horizontal-chart {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .horizontal-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .horizontal-label {
+            width: 100px;
+            text-align: right;
+            font-size: 14px;
+            color: #333;
+        }
+        
+        .horizontal-bar-container {
+            flex: 1;
+            height: 30px;
+            background: #f0f0f0;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+        
+        .horizontal-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #2196F3, #64B5F6);
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 10px;
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            transition: width 0.5s ease;
+        }
+        
+        .horizontal-value {
+            width: 50px;
+            text-align: left;
+            font-size: 14px;
+            color: #666;
+        }
+        
+        /* 竖向柱状图 - 累计时长 */
+        .vertical-chart {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-around;
+            height: 300px;
+            padding: 20px 0;
+            gap: 10px;
+        }
+        
+        .vertical-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+            max-width: 80px;
+        }
+        
+        .vertical-bar-container {
+            width: 60px;
+            height: 250px;
+            background: #f0f0f0;
+            border-radius: 8px 8px 0 0;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .vertical-bar {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            background: linear-gradient(180deg, #4CAF50, #8BC34A);
+            border-radius: 8px 8px 0 0;
+            transition: height 0.5s ease;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding-top: 5px;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .vertical-label {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #333;
+            text-align: center;
+            word-break: break-all;
+        }
+        
+        .empty-state {
+            text-align: center;
+            color: #999;
+            padding: 40px;
+        }
+        
+        .week-info {
+            background: #e3f2fd;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            text-align: center;
+            color: #1976D2;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <button class="back-btn" onclick="goBack()">← 返回</button>
+        <h1>📊 本周回顾</h1>
+    </div>
+    
+    <div class="week-info" id="weekInfo">
+        统计周期：本周一至周日
+    </div>
+    
+    <div class="chart-container">
+        <h2>📈 任务累计次数（横向柱状图）</h2>
+        <div id="countChart" class="horizontal-chart"></div>
+    </div>
+    
+    <div class="chart-container">
+        <h2>⏱️ 任务累计时长（竖向柱状图）</h2>
+        <div id="durationChart" class="vertical-chart"></div>
+    </div>
+    
+    <script>
+        let records = [];
+        
+        // 从 LocalStorage 加载数据
+        function loadRecords() {
+            const saved = localStorage.getItem('dailyRecords');
+            if (saved) {
+                records = JSON.parse(saved);
+            }
+        }
+        
+        // 获取本周记录
+        function getWeekRecords() {
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const dayOfWeek = today.getDay(); // 0=周日, 1=周一, ..., 6=周六
+            const monday = new Date(today);
+            monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+            
+            return records.filter(r => {
+                const recordDate = new Date(r.startTime);
+                return recordDate >= monday;
+            });
+        }
+        
+        // 统计活动次数
+        function countActivities(weekRecords) {
+            const counts = {};
+            weekRecords.forEach(r => {
+                counts[r.activity] = (counts[r.activity] || 0) + 1;
+            });
+            return counts;
+        }
+        
+        // 统计活动时长
+        function durationActivities(weekRecords) {
+            const durations = {};
+            weekRecords.forEach(r => {
+                durations[r.activity] = (durations[r.activity] || 0) + r.duration;
+            });
+            return durations;
+        }
+        
+        // 渲染横向柱状图（次数）
+        function renderCountChart(counts) {
+            const container = document.getElementById('countChart');
+            
+            if (Object.keys(counts).length === 0) {
+                container.innerHTML = '<div class="empty-state">本周还没有记录</div>';
+                return;
+            }
+            
+            const maxCount = Math.max(...Object.values(counts));
+            
+            const html = Object.entries(counts)
+                .sort((a, b) => b[1] - a[1])
+                .map(([activity, count]) => {
+                    const width = (count / maxCount) * 100;
+                    return `
+                        <div class="horizontal-item">
+                            <div class="horizontal-label">${activity}</div>
+                            <div class="horizontal-bar-container">
+                                <div class="horizontal-bar" style="width: ${width}%">${count}次</div>
+                            </div>
+                            <div class="horizontal-value">${count}次</div>
+                        </div>
+                    `;
+                }).join('');
+            
+            container.innerHTML = html;
+        }
+        
+        // 渲染竖向柱状图（时长）
+        function renderDurationChart(durations) {
+            const container = document.getElementById('durationChart');
+            
+            if (Object.keys(durations).length === 0) {
+                container.innerHTML = '<div class="empty-state">本周还没有记录</div>';
+                return;
+            }
+            
+            const maxDuration = Math.max(...Object.values(durations));
+            
+            const html = Object.entries(durations)
+                .sort((a, b) => b[1] - a[1])
+                .map(([activity, duration]) => {
+                    const height = (duration / maxDuration) * 100;
+                    const hours = Math.floor(duration / 60);
+                    const mins = Math.floor(duration % 60);
+                    const timeStr = hours > 0 ? `${hours}h${mins}m` : `${mins}m`;
+                    return `
+                        <div class="vertical-item">
+                            <div class="vertical-bar-container">
+                                <div class="vertical-bar" style="height: ${height}%">${timeStr}</div>
+                            </div>
+                            <div class="vertical-label">${activity}</div>
+                        </div>
+                    `;
+                }).join('');
+            
+            container.innerHTML = html;
+        }
+        
+        // 更新周信息
+        function updateWeekInfo() {
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const dayOfWeek = today.getDay();
+            const monday = new Date(today);
+            monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+            const sunday = new Date(monday);
+            sunday.setDate(monday.getDate() + 6);
+            
+            const formatDate = (date) => {
+                return `${date.getMonth() + 1}月${date.getDate()}日`;
+            };
+            
+            document.getElementById('weekInfo').textContent = 
+                `统计周期：${formatDate(monday)} 至 ${formatDate(sunday)}`;
+        }
+        
+        // 返回首页
+        function goBack() {
+            window.location.href = 'time-tracker-vscode.html';
+        }
+        
+        // 页面加载时初始化
+        window.onload = function() {
+            loadRecords();
+            updateWeekInfo();
+            
+            const weekRecords = getWeekRecords();
+            const counts = countActivities(weekRecords);
+            const durations = durationActivities(weekRecords);
+            
+            renderCountChart(counts);
+            renderDurationChart(durations);
+        };
+    </script>
+</body>
+</html>
