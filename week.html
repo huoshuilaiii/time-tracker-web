@@ -194,11 +194,50 @@
         <div id="durationChart" class="vertical-chart"></div>
     </div>
     
+    <script src="https://res.wx.qq.com/open/js/cloudbase/1.1.0/cloud.js"></script>
     <script>
         let records = [];
+        let isCloudReady = false;
+        let db = null;
         
-        // 从 LocalStorage 加载数据
-        function loadRecords() {
+        // 初始化云开发
+        async function initCloud() {
+            try {
+                await cloud.init({
+                    env: 'time-tracker-d7gc18jwd7cdc8b0d'
+                });
+                db = cloud.database();
+                isCloudReady = true;
+                console.log('云开发初始化成功');
+            } catch (e) {
+                console.log('云开发初始化失败', e);
+            }
+        }
+        
+        // 从云端或本地加载数据
+        async function loadRecords() {
+            if (isCloudReady) {
+                try {
+                    const { data } = await db.collection('records').orderBy('date', 'desc').limit(7).get();
+                    if (data && data.length > 0) {
+                        records = [];
+                        data.forEach(item => {
+                            if (item.records) {
+                                records.push(...item.records);
+                            }
+                        });
+                    }
+                } catch (e) {
+                    console.log('从云端加载失败', e);
+                    loadLocalRecords();
+                }
+            } else {
+                loadLocalRecords();
+            }
+        }
+        
+        // 从本地加载
+        function loadLocalRecords() {
             const saved = localStorage.getItem('dailyRecords');
             if (saved) {
                 records = JSON.parse(saved);
@@ -321,8 +360,9 @@
         }
         
         // 页面加载时初始化
-        window.onload = function() {
-            loadRecords();
+        window.onload = async function() {
+            await initCloud();
+            await loadRecords();
             updateWeekInfo();
             
             const weekRecords = getWeekRecords();

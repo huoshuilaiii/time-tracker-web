@@ -254,11 +254,118 @@
         </div>
     </div>
     
+    <script src="https://res.wx.qq.com/open/js/cloudbase/1.1.0/cloud.js"></script>
     <script>
         let activeRecords = {};
         let records = [];
         let updateInterval = null;
         let customActivity = null;
+        let isCloudReady = false;
+        let db = null;
+        
+        // 初始化云开发
+        async function initCloud() {
+            try {
+                await cloud.init({
+                    env: 'time-tracker-d7gc18jwd7cdc8b0d'
+                });
+                db = cloud.database();
+                isCloudReady = true;
+                console.log('云开发初始化成功');
+                await loadRecords();
+            } catch (e) {
+                console.log('云开发初始化失败，使用本地存储', e);
+                loadLocalRecords();
+            }
+        }
+        
+        async function loadRecords() {
+            if (!isCloudReady) {
+                loadLocalRecords();
+                return;
+            }
+            
+            try {
+                const { data } = await db.collection('records').orderBy('date', 'desc').limit(1).get();
+                if (data && data.length > 0) {
+                    records = data[0].records || [];
+                    activeRecords = data[0].activeRecords || {};
+                }
+            } catch (e) {
+                console.log('从云端加载失败', e);
+                loadLocalRecords();
+            }
+            updateButtons();
+        }
+        
+        function loadLocalRecords() {
+            const saved = localStorage.getItem('dailyRecords');
+            if (saved) {
+                records = JSON.parse(saved);
+            }
+            
+            const savedActive = localStorage.getItem('activeRecords');
+            if (savedActive) {
+                activeRecords = JSON.parse(savedActive);
+                updateButtons();
+            }
+        }
+        
+        async function saveRecords() {
+            if (isCloudReady) {
+                try {
+                    const today = new Date().toISOString().split('T')[0];
+                    const { data } = await db.collection('records').where({
+                        date: today
+                    }).get();
+                    
+                    if (data && data.length > 0) {
+                        await db.collection('records').doc(data[0]._id).update({
+                            data: {
+                                records: records,
+                                activeRecords: activeRecords
+                            }
+                        });
+                    } else {
+                        await db.collection('records').add({
+                            data: {
+                                date: today,
+                                records: records,
+                                activeRecords: activeRecords
+                            }
+                        });
+                    }
+                } catch (e) {
+                    console.log('保存到云端失败', e);
+                }
+            }
+            
+            // 同时保存到本地作为备份
+            localStorage.setItem('dailyRecords', JSON.stringify(records));
+        }
+        
+        async function saveActiveRecords() {
+            if (isCloudReady) {
+                try {
+                    const today = new Date().toISOString().split('T')[0];
+                    const { data } = await db.collection('records').where({
+                        date: today
+                    }).get();
+                    
+                    if (data && data.length > 0) {
+                        await db.collection('records').doc(data[0]._id).update({
+                            data: {
+                                activeRecords: activeRecords
+                            }
+                        });
+                    }
+                } catch (e) {
+                    console.log('保存活跃记录失败', e);
+                }
+            }
+            
+            localStorage.setItem('activeRecords', JSON.stringify(activeRecords));
+        }
         
         const activityCategories = {
             '英语chat': '学习',
@@ -274,27 +381,6 @@
             '床单': '日常',
             '扫拖': '日常'
         };
-        
-        function loadRecords() {
-            const saved = localStorage.getItem('dailyRecords');
-            if (saved) {
-                records = JSON.parse(saved);
-            }
-            
-            const savedActive = localStorage.getItem('activeRecords');
-            if (savedActive) {
-                activeRecords = JSON.parse(savedActive);
-                updateButtons();
-            }
-        }
-        
-        function saveRecords() {
-            localStorage.setItem('dailyRecords', JSON.stringify(records));
-        }
-        
-        function saveActiveRecords() {
-            localStorage.setItem('activeRecords', JSON.stringify(activeRecords));
-        }
         
         function toggleActivity(activityName) {
             if (activeRecords[activityName]) {
@@ -379,7 +465,7 @@
         }
         
         window.onload = function() {
-            loadRecords();
+            initCloud();
         };
         
         window.onbeforeunload = function() {

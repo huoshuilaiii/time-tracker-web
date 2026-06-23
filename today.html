@@ -497,23 +497,89 @@
         <div class="context-menu-item" onclick="hideContextMenu()">取消</div>
     </div>
     
+    <script src="https://res.wx.qq.com/open/js/cloudbase/1.1.0/cloud.js"></script>
     <script>
         let records = [];
         let recordToDelete = null;
         let touchStartX = 0;
         let touchCurrentX = 0;
         let swipedElement = null;
+        let isCloudReady = false;
+        let db = null;
         
-        // 从 LocalStorage 加载数据
-        function loadRecords() {
+        // 初始化云开发
+        async function initCloud() {
+            try {
+                await cloud.init({
+                    env: 'time-tracker-d7gc18jwd7cdc8b0d'
+                });
+                db = cloud.database();
+                isCloudReady = true;
+                console.log('云开发初始化成功');
+            } catch (e) {
+                console.log('云开发初始化失败', e);
+            }
+        }
+        
+        // 从云端或本地加载数据
+        async function loadRecords() {
+            if (isCloudReady) {
+                try {
+                    const today = new Date().toISOString().split('T')[0];
+                    const { data } = await db.collection('records').where({
+                        date: today
+                    }).get();
+                    
+                    if (data && data.length > 0) {
+                        records = data[0].records || [];
+                    } else {
+                        records = [];
+                    }
+                } catch (e) {
+                    console.log('从云端加载失败', e);
+                    loadLocalRecords();
+                }
+            } else {
+                loadLocalRecords();
+            }
+        }
+        
+        // 从本地加载
+        function loadLocalRecords() {
             const saved = localStorage.getItem('dailyRecords');
             if (saved) {
                 records = JSON.parse(saved);
             }
         }
         
-        // 保存数据
-        function saveRecords() {
+        // 保存数据到云端和本地
+        async function saveRecords() {
+            if (isCloudReady) {
+                try {
+                    const today = new Date().toISOString().split('T')[0];
+                    const { data } = await db.collection('records').where({
+                        date: today
+                    }).get();
+                    
+                    if (data && data.length > 0) {
+                        await db.collection('records').doc(data[0]._id).update({
+                            data: {
+                                records: records
+                            }
+                        });
+                    } else {
+                        await db.collection('records').add({
+                            data: {
+                                date: today,
+                                records: records
+                            }
+                        });
+                    }
+                } catch (e) {
+                    console.log('保存到云端失败', e);
+                }
+            }
+            
             localStorage.setItem('dailyRecords', JSON.stringify(records));
         }
         
@@ -795,8 +861,9 @@
         }
         
         // 页面加载时初始化
-        window.onload = function() {
-            loadRecords();
+        window.onload = async function() {
+            await initCloud();
+            await loadRecords();
             updateDateTitle();
             generateTimeLabelsLeft();
             generateTimeLabelsRight();
