@@ -324,9 +324,24 @@
         // 初始化 BroadcastChannel 实现标签页同步
         try {
             bc = new BroadcastChannel('time-tracker-sync');
-            bc.onmessage = (event) => {
+            bc.onmessage = async (event) => {
                 if (event.data.type === 'sync') {
+                    // 收到广播后，先加载本地，再尝试从云端拉取最新数据
                     loadLocalRecords();
+                    if (isCloudReady) {
+                        try {
+                            const { data } = await db.collection('records').orderBy('date', 'desc').limit(1).get();
+                            if (data && data.length > 0) {
+                                records = data[0].records || [];
+                                activeRecords = data[0].activeRecords || {};
+                                // 同步到本地存储
+                                localStorage.setItem('dailyRecords', JSON.stringify(records));
+                                localStorage.setItem('activeRecords', JSON.stringify(activeRecords));
+                            }
+                        } catch (e) {
+                            console.log('广播后云端拉取失败', e);
+                        }
+                    }
                     updateButtons();
                     showSyncToast('数据已同步');
                 }
