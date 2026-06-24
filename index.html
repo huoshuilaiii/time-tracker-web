@@ -5,6 +5,61 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>📝 Q's日常</title>
     <style>
+        /* 添加 Toast 动画 */
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+            20% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+        }
+        
+        /* 添加同步状态指示器 */
+        .sync-status {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            z-index: 100;
+            transition: all 0.3s;
+        }
+        .sync-status.online {
+            background: #4CAF50;
+            color: white;
+        }
+        .sync-status.offline {
+            background: #FF9800;
+            color: white;
+        }
+        .sync-status.syncing {
+            background: #2196F3;
+            color: white;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        
+        /* 按钮点击动画 */
+        .quick-btn:active {
+            transform: scale(0.95) !important;
+            transition: transform 0.1s;
+        }
+        
+        .quick-btn.active {
+            background: #4CAF50;
+            color: white;
+            animation: breathe 2s ease-in-out infinite;
+        }
+        
+        @keyframes breathe {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.4); }
+            50% { box-shadow: 0 0 0 10px rgba(76, 175, 80, 0); }
+        }
+        
         * {
             margin: 0;
             padding: 0;
@@ -192,6 +247,8 @@
     </style>
 </head>
 <body>
+    <div class="sync-status offline" id="syncStatus">🔄 离线模式</div>
+    
     <h1>📝 Q's日常</h1>
     
     <div class="status-bar">
@@ -262,19 +319,64 @@
         let customActivity = null;
         let isCloudReady = false;
         let db = null;
+        let bc = null;
+        
+        // 初始化 BroadcastChannel 实现标签页同步
+        try {
+            bc = new BroadcastChannel('time-tracker-sync');
+            bc.onmessage = (event) => {
+                if (event.data.type === 'sync') {
+                    loadLocalRecords();
+                    updateButtons();
+                    showSyncToast('数据已同步');
+                }
+            };
+        } catch (e) {
+            console.log('BroadcastChannel 不支持');
+        }
+        
+        // 显示同步提示
+        function showSyncToast(message) {
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                position: fixed;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(33, 150, 243, 0.9);
+                color: white;
+                padding: 8px 16px;
+                border-radius: 20px;
+                font-size: 13px;
+                z-index: 1000;
+                animation: fadeInOut 2s ease forwards;
+            `;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2000);
+        }
+        
+        // 更新同步状态显示
+        function updateSyncStatus(status, text) {
+            const el = document.getElementById('syncStatus');
+            el.className = 'sync-status ' + status;
+            el.textContent = text;
+        }
         
         // 初始化云开发
         async function initCloud() {
             try {
                 await cloud.init({
-                    env: 'time-tracker-d7gc18jwd7cdc8b0d'
+                    env: 'time-tracker-web-9f8j7'
                 });
                 db = cloud.database();
                 isCloudReady = true;
+                updateSyncStatus('online', '☁️ 云同步');
                 console.log('云开发初始化成功');
                 await loadRecords();
             } catch (e) {
                 console.log('云开发初始化失败，使用本地存储', e);
+                updateSyncStatus('offline', '🔄 离线模式');
                 loadLocalRecords();
             }
         }
@@ -312,7 +414,17 @@
         }
         
         async function saveRecords() {
+            // 先保存到本地
+            localStorage.setItem('dailyRecords', JSON.stringify(records));
+            
+            // 广播给其他标签页
+            if (bc) {
+                bc.postMessage({ type: 'sync', timestamp: Date.now() });
+            }
+            
+            // 尝试云端同步
             if (isCloudReady) {
+                updateSyncStatus('syncing', '⏳ 同步中...');
                 try {
                     const today = new Date().toISOString().split('T')[0];
                     const { data } = await db.collection('records').where({
@@ -335,17 +447,26 @@
                             }
                         });
                     }
+                    updateSyncStatus('online', '☁️ 云同步');
                 } catch (e) {
                     console.log('保存到云端失败', e);
+                    updateSyncStatus('offline', '🔄 离线模式');
                 }
             }
-            
-            // 同时保存到本地作为备份
-            localStorage.setItem('dailyRecords', JSON.stringify(records));
         }
         
         async function saveActiveRecords() {
+            // 先保存到本地
+            localStorage.setItem('activeRecords', JSON.stringify(activeRecords));
+            
+            // 广播给其他标签页
+            if (bc) {
+                bc.postMessage({ type: 'sync', timestamp: Date.now() });
+            }
+            
+            // 尝试云端同步
             if (isCloudReady) {
+                updateSyncStatus('syncing', '⏳ 同步中...');
                 try {
                     const today = new Date().toISOString().split('T')[0];
                     const { data } = await db.collection('records').where({
@@ -359,12 +480,12 @@
                             }
                         });
                     }
+                    updateSyncStatus('online', '☁️ 云同步');
                 } catch (e) {
-                    console.log('保存活跃记录失败', e);
+                    console.log('保存活跃记录到云端失败', e);
+                    updateSyncStatus('offline', '🔄 离线模式');
                 }
             }
-            
-            localStorage.setItem('activeRecords', JSON.stringify(activeRecords));
         }
         
         const activityCategories = {
@@ -382,13 +503,45 @@
             '扫拖': '日常'
         };
         
+        // 显示 Toast 提示
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            const bgColor = type === 'success' ? 'rgba(76, 175, 80, 0.9)' : 
+                           type === 'error' ? 'rgba(244, 67, 54, 0.9)' : 
+                           'rgba(33, 150, 243, 0.9)';
+            
+            toast.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%) scale(0.8);
+                background: ${bgColor};
+                color: white;
+                padding: 16px 32px;
+                border-radius: 12px;
+                font-size: 16px;
+                font-weight: bold;
+                z-index: 10000;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+                animation: fadeInOut 1.5s ease forwards;
+                pointer-events: none;
+            `;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 1500);
+        }
+        
         function toggleActivity(activityName) {
+            const btn = event.currentTarget;
+            
             if (activeRecords[activityName]) {
                 endActivity(activityName);
-                event.target.classList.remove('active');
+                btn.classList.remove('active');
+                showToast(`✅ 已结束：${activityName}`, 'success');
             } else {
                 startActivity(activityName);
-                event.target.classList.add('active');
+                btn.classList.add('active');
+                showToast(`🚀 已开始：${activityName}`, 'success');
             }
         }
         
