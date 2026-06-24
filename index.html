@@ -384,6 +384,11 @@
                 await cloud.init({
                     env: 'time-tracker-web-9f8j7'
                 });
+                
+                // 匿名登录（必须登录才能写入数据库）
+                await cloud.auth().signInAnonymously();
+                console.log('匿名登录成功');
+                
                 db = cloud.database();
                 isCloudReady = true;
                 updateSyncStatus('online', '☁️ 云同步');
