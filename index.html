@@ -413,79 +413,62 @@
             }
         }
         
-        async function saveRecords() {
-            // 先保存到本地
-            localStorage.setItem('dailyRecords', JSON.stringify(records));
+        // 异步保存到云端（后台执行）
+        async function saveToCloud() {
+            if (!isCloudReady) return;
             
-            // 广播给其他标签页
-            if (bc) {
-                bc.postMessage({ type: 'sync', timestamp: Date.now() });
-            }
-            
-            // 尝试云端同步
-            if (isCloudReady) {
-                updateSyncStatus('syncing', '⏳ 同步中...');
-                try {
-                    const today = new Date().toISOString().split('T')[0];
-                    const { data } = await db.collection('records').where({
-                        date: today
-                    }).get();
-                    
-                    if (data && data.length > 0) {
-                        await db.collection('records').doc(data[0]._id).update({
-                            data: {
-                                records: records,
-                                activeRecords: activeRecords
-                            }
-                        });
-                    } else {
-                        await db.collection('records').add({
-                            data: {
-                                date: today,
-                                records: records,
-                                activeRecords: activeRecords
-                            }
-                        });
-                    }
-                    updateSyncStatus('online', '☁️ 云同步');
-                } catch (e) {
-                    console.log('保存到云端失败', e);
-                    updateSyncStatus('offline', '🔄 离线模式');
+            updateSyncStatus('syncing', '⏳ 同步中...');
+            try {
+                const today = new Date().toISOString().split('T')[0];
+                const { data } = await db.collection('records').where({
+                    date: today
+                }).get();
+                
+                if (data && data.length > 0) {
+                    await db.collection('records').doc(data[0]._id).update({
+                        data: {
+                            records: records,
+                            activeRecords: activeRecords
+                        }
+                    });
+                } else {
+                    await db.collection('records').add({
+                        data: {
+                            date: today,
+                            records: records,
+                            activeRecords: activeRecords
+                        }
+                    });
                 }
+                updateSyncStatus('online', '☁️ 云同步');
+            } catch (e) {
+                console.log('保存到云端失败', e);
+                updateSyncStatus('offline', '🔄 离线模式');
             }
         }
         
-        async function saveActiveRecords() {
-            // 先保存到本地
-            localStorage.setItem('activeRecords', JSON.stringify(activeRecords));
-            
-            // 广播给其他标签页
+        async function saveRecords() {
+            // 先保存到本地并广播
+            localStorage.setItem('dailyRecords', JSON.stringify(records));
             if (bc) {
-                bc.postMessage({ type: 'sync', timestamp: Date.now() });
-            }
-            
-            // 尝试云端同步
-            if (isCloudReady) {
-                updateSyncStatus('syncing', '⏳ 同步中...');
                 try {
-                    const today = new Date().toISOString().split('T')[0];
-                    const { data } = await db.collection('records').where({
-                        date: today
-                    }).get();
-                    
-                    if (data && data.length > 0) {
-                        await db.collection('records').doc(data[0]._id).update({
-                            data: {
-                                activeRecords: activeRecords
-                            }
-                        });
-                    }
-                    updateSyncStatus('online', '☁️ 云同步');
-                } catch (e) {
-                    console.log('保存活跃记录到云端失败', e);
-                    updateSyncStatus('offline', '🔄 离线模式');
-                }
+                    bc.postMessage({ type: 'sync', timestamp: Date.now() });
+                } catch (e) {}
             }
+            // 后台同步到云端
+            saveToCloud();
+        }
+        
+        async function saveActiveRecords() {
+            // 先保存到本地并广播
+            localStorage.setItem('activeRecords', JSON.stringify(activeRecords));
+            if (bc) {
+                try {
+                    bc.postMessage({ type: 'sync', timestamp: Date.now() });
+                } catch (e) {}
+            }
+            // 后台同步到云端
+            saveToCloud();
         }
         
         const activityCategories = {
@@ -545,13 +528,25 @@
             }
         }
         
+        // 广播同步消息（简化版，不依赖 async）
+        function broadcastSync() {
+            localStorage.setItem('activeRecords', JSON.stringify(activeRecords));
+            localStorage.setItem('dailyRecords', JSON.stringify(records));
+            if (bc) {
+                try {
+                    bc.postMessage({ type: 'sync', timestamp: Date.now() });
+                } catch (e) {
+                    console.log('广播失败', e);
+                }
+            }
+        }
+        
         function startActivity(activityName) {
             activeRecords[activityName] = {
                 startTime: new Date().toISOString(),
                 category: activityCategories[activityName] || '其他'
             };
-            
-            saveActiveRecords();
+            broadcastSync();
         }
         
         function endActivity(activityName) {
@@ -571,9 +566,7 @@
             });
             
             delete activeRecords[activityName];
-            
-            saveRecords();
-            saveActiveRecords();
+            broadcastSync();
         }
         
         function startCustomRecord() {
